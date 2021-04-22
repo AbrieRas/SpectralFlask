@@ -339,8 +339,11 @@ public class clsSpectralFlask extends javax.swing.JFrame {
             dNS = Double.parseDouble(teNS.getText()) * 3;
             dMR = Double.parseDouble(teMR.getText()) * 4;
             dVT = Double.parseDouble(teVT.getText()) * 4;
-            dDiff = Double.parseDouble(teDiff.getText()) - dAmt;
             dAmt = dRG + dWB + dNS + dMR + dVT;
+            dDiff = (Double.parseDouble(teDiff.getText())) * 0.95f - dAmt;
+            //dDiff *= 100;
+            dAmt = Math.round(dDiff * 100.0) / 100.0;
+            dDiff = Math.round(dDiff * 100.0) / 100.0;
             lblAmt.setText(dAmt + " Gold");
             lblDiff.setText(dDiff + " Gold");
         } catch (NumberFormatException e) {
