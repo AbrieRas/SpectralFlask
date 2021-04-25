@@ -11,18 +11,21 @@ package com.mycompany.spectralflask;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+//import java.io.FileWriter;
+//import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.Date;
+//import java.sql.DatabaseMetaData;
+//import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+//import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
+//import java.util.logging.Level;
+//import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 
 /**
@@ -32,8 +35,8 @@ import javax.swing.JOptionPane;
 public class clsSpectralFlask extends javax.swing.JFrame {
 
     double dRG, dWB, dNS, dMR, dVT, dAmt, dDiff;
-    String sText, txtLoc, sData, sDate, sRG, sWB, sNS, sMR, sVT, sDiff, sNrFlask, databaseURL, sSQL;
-    int iLocRG, iLocWB, iLocNS, iLocMR, iLocVT, iLocDiff, iNrFlask, iLocNrFlask;
+    String sText, txtLoc, sData, sDate, sRG, sWB, sNS, sMR, sVT, sDiff, sNrFlask, databaseURL, sSQL, aYears[], aMonths[], aDays[];
+    int iLocRG, iLocWB, iLocNS, iLocMR, iLocVT, iLocDiff, iNrFlask, iLocNrFlask, iInactive, iNumRows;
     boolean noConn = false;
     SimpleDateFormat formatter = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     /**
@@ -287,34 +290,49 @@ public class clsSpectralFlask extends javax.swing.JFrame {
             preparedStatement.setString(6, teVT.getText());
             preparedStatement.setString(7, teDiff.getText());
             
-//            troubleshoot
-//            int row = preparedStatement.executeUpdate();
-//            
+            preparedStatement.executeUpdate();
+            
+//            //troubleshoot
+//            int row = preparedStatement.executeUpdate(); //before uncommenting, remove above statement
 //            if (row > 0) {
 //                System.out.println("A row has been inserted successfully.");
 //            }
 
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            System.out.println("Couldn't connect to the Database: " + ex);
         }
         
-        File fnew = new File("FlaskInfo.txt");
+//=============================================
+//txt solution of selecting latest record
+//=============================================
+//        File fnew = new File("FlaskInfo.txt");
+//        
+//        sText = "RG:" + teRG.getText() + "\n"
+//            + "WB:" + teWB.getText() + "\n"
+//            + "NS:" + teNS.getText() + "\n"
+//            + "MR:" + teMR.getText() + "\n"
+//            + "VT:" + teVT.getText() + "\n"
+//            + "Diff:" + teDiff.getText() + "\n"
+//            + "NrFlask:" + teNrFlask.getText();
+//        try {
+//            FileWriter fw = new FileWriter(fnew, false);
+//            fw.write(sText);
+//            fw.close();
+//        } catch (IOException e) {
+//            System.out.println(e);
+//        }
+//=============================================
+//txt solution of selecting latest record - END
+//=============================================
+    }                                       
+
+    private void teNSKeyPressed(java.awt.event.KeyEvent evt) {                                
         
-        sText = "RG:" + teRG.getText() + "\n"
-            + "WB:" + teWB.getText() + "\n"
-            + "NS:" + teNS.getText() + "\n"
-            + "MR:" + teMR.getText() + "\n"
-            + "VT:" + teVT.getText() + "\n"
-            + "Diff:" + teDiff.getText() + "\n"
-            + "NrFlask:" + teNrFlask.getText();
-        try {
-            FileWriter fw = new FileWriter(fnew, false);
-            fw.write(sText);
-            fw.close();
-        } catch (IOException e) {
-            System.out.println(e);
-        }
-    }                                      
+    }                               
+
+    private void teNSKeyTyped(java.awt.event.KeyEvent evt) {                              
+        
+    }                             
 
     private void teNSKeyReleased(java.awt.event.KeyEvent evt) {                                 
         calcTotal();
@@ -348,6 +366,9 @@ public class clsSpectralFlask extends javax.swing.JFrame {
         teVT.setText("0");
         teDiff.setText("0");
         teNrFlask.setText("0");
+        iInactive = 0;
+        
+        java.util.Date date = new java.util.Date();
         
         txtLoc = "FlaskInfo.txt";
         databaseURL = "jdbc:ucanaccess://D://Dev//Java//SpectralFlask//SpectralFlask//FlaskInfoDB.accdb";
@@ -365,35 +386,77 @@ public class clsSpectralFlask extends javax.swing.JFrame {
                                                 Resetting values to zero(0).""");
         }
         
-        try {
-            iLocRG = sData.indexOf("RG:");
-            iLocWB = sData.indexOf("WB:");
-            iLocNS = sData.indexOf("NS:");
-            iLocMR = sData.indexOf("MR:");
-            iLocVT = sData.indexOf("VT:");
-            iLocDiff = sData.indexOf("Diff:");
-            iLocNrFlask = sData.indexOf("NrFlask:");
+        try (Connection conn = DriverManager.getConnection(databaseURL)) {
             
-            sRG = sData.substring(iLocRG + 3, iLocWB);
-            sWB = sData.substring(iLocWB + 3, iLocNS);
-            sNS = sData.substring(iLocNS + 3, iLocMR);
-            sMR = sData.substring(iLocMR + 3, iLocVT);
-            sVT = sData.substring(iLocVT + 3, iLocDiff);
-            sDiff = sData.substring(iLocDiff + 5, iLocNrFlask);
-            sNrFlask = sData.substring(iLocNrFlask + 8);
+            sSQL = "SELECT COUNT(*) AS `ROWS` FROM tblFlaskInfo;";
+            Statement statement = conn.createStatement();
+            ResultSet checkRowsResult = statement.executeQuery(sSQL);
+            checkRowsResult.next(); //from title to first row
+            iNumRows = Integer.parseInt(checkRowsResult.getString("ROWS")); //counts rows
+
+            sSQL = "SELECT * FROM tblFlaskInfo;";
+            ResultSet result = statement.executeQuery(sSQL); 
             
+            for (int i = 0; i < iNumRows; i++) { //uses counted rows
+                result.next(); //skip to latest row content
+            }
+                
+            sRG = result.getString("colRG");
+            sWB = result.getString("colWB");
+            sNS = result.getString("colNS");
+            sMR = result.getString("colMR");
+            sVT = result.getString("colVT");
+            sDiff = result.getString("colFlaskPrice");
+
             teRG.setText(sRG);
             teWB.setText(sWB);
             teNS.setText(sNS);
             teMR.setText(sMR);
             teVT.setText(sVT);
             teDiff.setText(sDiff);
-            teNrFlask.setText(sNrFlask);
+            teNrFlask.setText("1");
             
             calcTotal();
-        } catch (Exception e) {
-            System.out.println(e);
+             
+        } catch (SQLException ex) {
+            ex.printStackTrace();
         }
+        
+//=============================================
+//txt solution of selecting latest record
+//=============================================
+//        try {
+//            iLocRG = sData.indexOf("RG:");
+//            iLocWB = sData.indexOf("WB:");
+//            iLocNS = sData.indexOf("NS:");
+//            iLocMR = sData.indexOf("MR:");
+//            iLocVT = sData.indexOf("VT:");
+//            iLocDiff = sData.indexOf("Diff:");
+//            iLocNrFlask = sData.indexOf("NrFlask:");
+//            
+//            sRG = sData.substring(iLocRG + 3, iLocWB);
+//            sWB = sData.substring(iLocWB + 3, iLocNS);
+//            sNS = sData.substring(iLocNS + 3, iLocMR);
+//            sMR = sData.substring(iLocMR + 3, iLocVT);
+//            sVT = sData.substring(iLocVT + 3, iLocDiff);
+//            sDiff = sData.substring(iLocDiff + 5, iLocNrFlask);
+//            sNrFlask = sData.substring(iLocNrFlask + 8);
+//            
+//            teRG.setText(sRG);
+//            teWB.setText(sWB);
+//            teNS.setText(sNS);
+//            teMR.setText(sMR);
+//            teVT.setText(sVT);
+//            teDiff.setText(sDiff);
+//            teNrFlask.setText(sNrFlask);
+//            
+//            calcTotal();
+//        } catch (Exception e) {
+//            System.out.println(e);
+//        }
+//=============================================
+//txt solution of selecting latest record - END
+//=============================================
     }                                 
 
     private void teNSFocusGained(java.awt.event.FocusEvent evt) {                                 
