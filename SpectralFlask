@@ -1,3 +1,7 @@
+//#idea: insert checkup for previous day up to 30 days ago
+//to see if user has used program in the last 30 days
+//if not, reset values to 0
+
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -9,6 +13,15 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.Scanner;
 import javax.swing.JOptionPane;
 
@@ -19,8 +32,10 @@ import javax.swing.JOptionPane;
 public class clsSpectralFlask extends javax.swing.JFrame {
 
     double dRG, dWB, dNS, dMR, dVT, dAmt, dDiff;
-    String sText, txtLoc, sData, sRG, sWB, sNS, sMR, sVT, sDiff;
-    int iLocRG, iLocWB, iLocNS, iLocMR, iLocVT, iLocDiff;
+    String sText, txtLoc, sData, sDate, sRG, sWB, sNS, sMR, sVT, sDiff, sNrFlask, databaseURL, sSQL;
+    int iLocRG, iLocWB, iLocNS, iLocMR, iLocVT, iLocDiff, iNrFlask, iLocNrFlask;
+    boolean noConn = false;
+    SimpleDateFormat formatter = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     /**
      * Creates new form clsSpectralFlask
      */
@@ -53,6 +68,8 @@ public class clsSpectralFlask extends javax.swing.JFrame {
         lblFlaskPrice = new javax.swing.JLabel();
         lblDiff = new javax.swing.JLabel();
         lblDiffTitle = new javax.swing.JLabel();
+        teNrFlask = new javax.swing.JTextField();
+        lblNrFlask = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -104,6 +121,11 @@ public class clsSpectralFlask extends javax.swing.JFrame {
         });
 
         teMR.setText("0");
+        teMR.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                teMRActionPerformed(evt);
+            }
+        });
         teMR.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 teMRKeyReleased(evt);
@@ -142,79 +164,98 @@ public class clsSpectralFlask extends javax.swing.JFrame {
 
         lblDiffTitle.setText("Difference Amount");
 
+        teNrFlask.setText("0");
+        teNrFlask.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                teNrFlaskKeyReleased(evt);
+            }
+        });
+
+        lblNrFlask.setText("Number of Flasks");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+            .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(btnSave, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblWB)
-                    .addComponent(lblRG)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addComponent(teWB, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 83, Short.MAX_VALUE)
-                        .addComponent(teRG, javax.swing.GroupLayout.Alignment.LEADING)))
-                .addGap(36, 36, 36)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(lblMR)
-                    .addComponent(lblNS)
-                    .addComponent(lblAmt, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnSave, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(teVT)
+                    .addComponent(teWB)
+                    .addComponent(lblVT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lblWB, javax.swing.GroupLayout.DEFAULT_SIZE, 110, Short.MAX_VALUE)
+                    .addComponent(teRG)
+                    .addComponent(lblRG, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(26, 26, 26)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(lblFlaskPrice, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(teDiff, javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(teMR)
-                            .addComponent(teNS)
-                            .addComponent(lblVT, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(teVT, javax.swing.GroupLayout.Alignment.LEADING))
-                        .addGap(18, 18, 18)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(lblAmt, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(layout.createSequentialGroup()
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(lblFlaskPrice, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(teDiff))
+                                    .addGap(116, 116, 116)))
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addComponent(teNS, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblNS, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(lblMR, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 110, Short.MAX_VALUE)
+                                .addComponent(teMR, javax.swing.GroupLayout.Alignment.LEADING)))
+                        .addGap(0, 5, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(teNrFlask)
+                            .addComponent(lblNrFlask, javax.swing.GroupLayout.DEFAULT_SIZE, 92, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(lblDiff, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(lblDiffTitle)
-                                .addGap(0, 0, Short.MAX_VALUE)))))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(lblDiffTitle, javax.swing.GroupLayout.DEFAULT_SIZE, 121, Short.MAX_VALUE))))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addGap(25, 25, 25)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblRG)
+                    .addComponent(lblNS))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(teRG, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(teNS, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(14, 14, 14)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblWB)
+                    .addComponent(lblMR))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(teWB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(teMR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 14, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(63, 63, 63)
-                        .addComponent(lblRG)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(teRG, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(lblWB)
-                        .addGap(11, 11, 11)
-                        .addComponent(teWB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(btnSave, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(27, 27, 27)
-                        .addComponent(lblNS)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(teNS, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(9, 9, 9)
-                        .addComponent(lblMR)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(teMR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(lblVT)
-                        .addGap(11, 11, 11)
-                        .addComponent(teVT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 36, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(lblFlaskPrice)
-                            .addComponent(lblDiffTitle))
+                            .addComponent(lblDiffTitle)
+                            .addComponent(lblNrFlask))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(teDiff, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(teNrFlask, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(lblDiff, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(lblAmt, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(5, 5, 5)))
+                        .addGap(5, 5, 5))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(lblVT)
+                            .addComponent(lblFlaskPrice))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(teVT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(teDiff, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(14, 14, 14)
+                        .addComponent(btnSave, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
 
@@ -227,6 +268,35 @@ public class clsSpectralFlask extends javax.swing.JFrame {
     }                                    
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {                                        
+
+        java.util.Date date = new java.util.Date();
+        sDate = formatter.format(date);
+        
+        try (Connection conn = DriverManager.getConnection(databaseURL)) {
+            
+            sSQL = "INSERT INTO tblFlaskInfo (colDate, colRG, colWB,"
+                    + " colNS, colMR, colVT, colFlaskPrice) VALUES (?,"
+                    + " ?, ?, ?, ?, ?, ?)";
+             
+            PreparedStatement preparedStatement = conn.prepareStatement(sSQL);
+            preparedStatement.setString(1, sDate);
+            preparedStatement.setString(2, teRG.getText());
+            preparedStatement.setString(3, teWB.getText());
+            preparedStatement.setString(4, teNS.getText());
+            preparedStatement.setString(5, teMR.getText());
+            preparedStatement.setString(6, teVT.getText());
+            preparedStatement.setString(7, teDiff.getText());
+            
+//            troubleshoot
+//            int row = preparedStatement.executeUpdate();
+//            
+//            if (row > 0) {
+//                System.out.println("A row has been inserted successfully.");
+//            }
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
         
         File fnew = new File("FlaskInfo.txt");
         
@@ -235,7 +305,8 @@ public class clsSpectralFlask extends javax.swing.JFrame {
             + "NS:" + teNS.getText() + "\n"
             + "MR:" + teMR.getText() + "\n"
             + "VT:" + teVT.getText() + "\n"
-            + "Diff:" + teDiff.getText();
+            + "Diff:" + teDiff.getText() + "\n"
+            + "NrFlask:" + teNrFlask.getText();
         try {
             FileWriter fw = new FileWriter(fnew, false);
             fw.write(sText);
@@ -243,15 +314,7 @@ public class clsSpectralFlask extends javax.swing.JFrame {
         } catch (IOException e) {
             System.out.println(e);
         }
-    }                                       
-
-    private void teNSKeyPressed(java.awt.event.KeyEvent evt) {                                
-        
-    }                               
-
-    private void teNSKeyTyped(java.awt.event.KeyEvent evt) {                              
-        
-    }                             
+    }                                      
 
     private void teNSKeyReleased(java.awt.event.KeyEvent evt) {                                 
         calcTotal();
@@ -284,14 +347,16 @@ public class clsSpectralFlask extends javax.swing.JFrame {
         teMR.setText("0");
         teVT.setText("0");
         teDiff.setText("0");
+        teNrFlask.setText("0");
         
         txtLoc = "FlaskInfo.txt";
+        databaseURL = "jdbc:ucanaccess://D://Dev//Java//SpectralFlask//SpectralFlask//FlaskInfoDB.accdb";
 
         try {
             File fileLoc = new File(txtLoc);
             Scanner myReader = new Scanner(fileLoc);
             while (myReader.hasNextLine()) {
-                sData = sData + myReader.nextLine(); //nullRG:030WB:030NS:030MR:030VT:030Diff:0750
+                sData = sData + myReader.nextLine();
             }
             myReader.close();
         } catch (FileNotFoundException e) {
@@ -307,13 +372,15 @@ public class clsSpectralFlask extends javax.swing.JFrame {
             iLocMR = sData.indexOf("MR:");
             iLocVT = sData.indexOf("VT:");
             iLocDiff = sData.indexOf("Diff:");
+            iLocNrFlask = sData.indexOf("NrFlask:");
             
             sRG = sData.substring(iLocRG + 3, iLocWB);
             sWB = sData.substring(iLocWB + 3, iLocNS);
             sNS = sData.substring(iLocNS + 3, iLocMR);
             sMR = sData.substring(iLocMR + 3, iLocVT);
             sVT = sData.substring(iLocVT + 3, iLocDiff);
-            sDiff = sData.substring(iLocDiff + 5);
+            sDiff = sData.substring(iLocDiff + 5, iLocNrFlask);
+            sNrFlask = sData.substring(iLocNrFlask + 8);
             
             teRG.setText(sRG);
             teWB.setText(sWB);
@@ -321,6 +388,7 @@ public class clsSpectralFlask extends javax.swing.JFrame {
             teMR.setText(sMR);
             teVT.setText(sVT);
             teDiff.setText(sDiff);
+            teNrFlask.setText(sNrFlask);
             
             calcTotal();
         } catch (Exception e) {
@@ -332,6 +400,14 @@ public class clsSpectralFlask extends javax.swing.JFrame {
         // TODO add your handling code here:
     }                                
 
+    private void teMRActionPerformed(java.awt.event.ActionEvent evt) {                                     
+        // TODO add your handling code here:
+    }                                    
+
+    private void teNrFlaskKeyReleased(java.awt.event.KeyEvent evt) {                                      
+        calcTotal();
+    }                                     
+
     private void calcTotal() {
         try {
             dRG = Double.parseDouble(teRG.getText()) * 4;
@@ -341,10 +417,15 @@ public class clsSpectralFlask extends javax.swing.JFrame {
             dVT = Double.parseDouble(teVT.getText()) * 4;
             dAmt = dRG + dWB + dNS + dMR + dVT;
             dDiff = (Double.parseDouble(teDiff.getText())) * 0.95f - dAmt;
-            //dDiff *= 100;
-            dAmt = Math.round(dDiff * 100.0) / 100.0;
+            iNrFlask = Integer.parseInt(teNrFlask.getText());
+            
+            dAmt *= iNrFlask;
+            dDiff *= iNrFlask;
+            
+            dAmt = Math.round(dAmt * 100.0) / 100.0;
             dDiff = Math.round(dDiff * 100.0) / 100.0;
-            lblAmt.setText(dAmt + " Gold");
+            
+            lblAmt.setText(dAmt + " Gold for materials");
             lblDiff.setText(dDiff + " Gold");
         } catch (NumberFormatException e) {
             lblAmt.setText("Err: " + e);
@@ -378,12 +459,14 @@ public class clsSpectralFlask extends javax.swing.JFrame {
     private javax.swing.JLabel lblFlaskPrice;
     private javax.swing.JLabel lblMR;
     private javax.swing.JLabel lblNS;
+    private javax.swing.JLabel lblNrFlask;
     private javax.swing.JLabel lblRG;
     private javax.swing.JLabel lblVT;
     private javax.swing.JLabel lblWB;
     private javax.swing.JTextField teDiff;
     private javax.swing.JTextField teMR;
     private javax.swing.JTextField teNS;
+    private javax.swing.JTextField teNrFlask;
     private javax.swing.JTextField teRG;
     private javax.swing.JTextField teVT;
     private javax.swing.JTextField teWB;
